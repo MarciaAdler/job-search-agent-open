@@ -88,6 +88,11 @@ a starting point. Ask if they want to:
 - Remove any that don't fit their target role/industry
 
 ## Step 9: Wrap up
+Run `chmod +x run-agent.sh` yourself right now (safe, idempotent) — a repo
+clone/download doesn't always preserve the execute bit, and a
+non-executable `run-agent.sh` makes cron fail silently later with no log
+and no obvious error. Don't skip this even if it looks fine; just run it.
+
 Remind them to test manually before scheduling cron:
 ```
 claude -p "$(cat agent-prompt.md)"
@@ -96,3 +101,17 @@ Run it interactively (without `--dangerously-skip-permissions`) the first
 time so they can approve tool calls and confirm it's searching sensibly.
 Point them at README.md §4 for the cron scheduling step once they're happy
 with a test run.
+
+If they mention they're on macOS (or you can tell from context/tooling),
+proactively flag README.md §4a: macOS won't run cron jobs while the machine
+is asleep, and its overnight "DarkWake" maintenance cycles don't count as
+awake for this purpose — a Mac that's normally asleep at the scheduled
+time will silently never run the job. Give them the fix directly rather
+than waiting for them to hit it:
+```
+sudo pmset repeat wake MTWRFSU 07:55:00
+```
+(adjust the time to ~5 minutes before whatever cron schedule they choose).
+This needs their own password at the `sudo` prompt, so tell them to run it
+themselves — you can't run `sudo` for them. Offer to verify afterward with
+`pmset -g sched` once they confirm they've run it.

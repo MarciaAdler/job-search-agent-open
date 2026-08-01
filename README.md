@@ -155,6 +155,57 @@ Create the log folder if it doesn't exist:
 mkdir -p /Users/you/job-search-agent-open/logs
 ```
 
+## 4a. macOS: make sure the job can actually fire
+Two macOS-specific gotchas caused a scheduled run to silently do nothing —
+no log file, no new Notion entries, no error anywhere obvious. Both are
+worth ruling out before you trust the schedule:
+
+**1. `run-agent.sh` must be executable.** Cloning or downloading a repo
+doesn't always preserve the execute bit. Check with:
+```bash
+ls -la run-agent.sh
+```
+You want to see `-rwxr-xr-x` (an `x` in there somewhere). If it's
+`-rw-r--r--` instead, fix it with:
+```bash
+chmod +x run-agent.sh
+```
+If this is missing, cron fails with "permission denied" — but since that
+error happens *before* the script's own log-redirect logic runs, you may
+not see it anywhere except by testing manually.
+
+**2. macOS won't run cron jobs while asleep — and "DarkWake" doesn't count.**
+Overnight, Macs cycle through brief low-power "DarkWake" states for
+background maintenance (Spotlight, Mail, iCloud sync) and go right back to
+sleep. Cron jobs do **not** run during DarkWake; they need a real, full
+wake. If your Mac is normally asleep at your scheduled time (lid closed,
+no reason to be awake), the job will never fire, and there will be zero
+trace of it anywhere.
+
+The fix is to schedule an actual wake a few minutes before your cron time:
+```bash
+sudo pmset repeat wake MTWRFSU 07:55:00
+```
+(Adjust the time to ~5 minutes before whatever you put in your crontab.
+`MTWRFSU` = every day; drop days you don't need, e.g. `MTWRF` for weekdays
+only — but match whatever schedule you used in cron.) This requires your
+Mac login password at the `sudo` prompt (no visible typing feedback — that's
+normal). Verify it took with:
+```bash
+pmset -g sched
+```
+You should see `repeating wake at 7:55AM every day` (or your chosen time).
+
+**How to tell which problem you have, if either:** run the script directly
+once, with the machine awake, using the exact same redirect cron would use:
+```bash
+./run-agent.sh >> logs/agent.log 2>&1
+```
+If this fails immediately with "permission denied," it's #1. If it runs
+fine manually but the scheduled run never produces a log entry, it's #2 —
+check `pmset -g log | grep -E "Sleep|Wake"` around your scheduled time to
+confirm the machine was actually asleep.
+
 ## 5. A note on `--dangerously-skip-permissions`
 `run-agent.sh` uses this flag because cron has no human present to approve
 tool calls interactively. It's reasonable here because this is a single-
