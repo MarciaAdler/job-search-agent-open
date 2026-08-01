@@ -1,0 +1,22 @@
+[
+  {"name": "Confido", "ats": "ashby", "token": "confido", "source": "Primary VC"},
+  {"name": "Alloy", "ats": "greenhouse", "token": "alloy", "source": "Primary VC"},
+  {"name": "Slice", "ats": "greenhouse", "token": "slice", "source": "Primary VC"},
+  {"name": "Bobyard", "ats": "ashby", "token": "bobyard", "source": "Primary VC"},
+  {"name": "Oscar Health", "ats": "greenhouse", "token": "oscar", "source": "8VC"},
+  {"name": "AirOps", "ats": "ashby", "token": "airops", "source": "Wing VC"},
+  {"name": "Feathery", "ats": "ashby", "token": "feathery", "source": "Wing VC"},
+  {"name": "Gusto", "ats": "greenhouse", "token": "gusto", "source": "Wing VC"},
+  {"name": "Ramp", "ats": "ashby", "token": "ramp", "source": "LSVP"},
+  {"name": "Tennr", "ats": "ashby", "token": "tennr", "source": "LSVP"},
+  {"name": "ClickHouse", "ats": "greenhouse", "token": "clickhouse", "source": "LSVP"},
+  {"name": "Temporal Technologies", "ats": "greenhouse", "token": "temporaltechnologies", "source": "LSVP"},
+  {"name": "Circle", "ats": "greenhouse", "token": "circleso", "source": "manual"},
+  {"name": "DonorsChoose", "ats": "greenhouse", "token": "donorschoose", "source": "manual"},
+  {"name": "Olo", "ats": "lever", "token": "olo", "source": "manual"},
+  {"name": "Sydecar", "ats": "ashby", "token": "sydecar", "source": "manual"},
+  {"name": "Niural", "ats": "ashby", "token": "niural", "source": "manual"},
+  {"name": "Entera", "ats": "greenhouse", "token": "entera", "source": "agent-suggested"},
+  {"name": "DailyPay", "ats": "ashby", "token": "dailypay", "source": "agent-suggested"},
+  {"name": "Secureframe", "ats": "lever", "token": "secureframe", "source": "agent-suggested"}
+]

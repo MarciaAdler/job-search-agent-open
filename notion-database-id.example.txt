@@ -1,0 +1,9 @@
+PASTE_YOUR_DATABASE_ID_HERE
+
+How to find it: open your Notion database as a full page, look at the URL:
+https://www.notion.so/yourworkspace/DATABASE_ID?v=view_id
+The DATABASE_ID is the 32-character string (no dashes needed) right after
+your workspace name and before the "?v=".
+
+If you're running /setup, it will ask you for this and write the real
+notion-database-id.txt for you — you don't need to edit this file directly.
