@@ -9,6 +9,15 @@ The default company list (`companies.json`) is startup-focused, seeded from
 five VC portfolio job boards (Lightspeed, Bessemer, Primary, 8VC, Wing) —
 but it's just a starting point you extend as you go.
 
+**Before you clone: pick a location outside `~/Desktop`, `~/Documents`, or
+`~/Downloads`.** macOS blocks background processes (like the scheduled
+agent) from touching files in those specific folders unless you grant
+Full Disk Access through System Settings — a fiddly, easy-to-forget step.
+Anywhere else under your home folder (e.g. `~/job-search-agent-open` or
+`~/Projects/job-search-agent-open`) avoids the problem entirely. If you've
+already cloned it into one of those folders, just move the whole folder
+before running `/setup`.
+
 ## How this works
 
 Most "search the web for jobs" approaches run into two problems: search
@@ -30,7 +39,9 @@ supplementary discovery pass for companies not yet in your list.
    `profile.md` and walk you through connecting Notion and reviewing
    `companies.json`.
 4. Test it manually (the setup command will remind you how).
-5. Schedule it with cron once you're happy with a test run.
+5. Set up the scheduled run once you're happy with a test run — `/setup`
+   creates a `launchd` LaunchAgent for you (see §4 for why this instead of
+   cron).
 
 Everything below is the same walkthrough in longer form, if you'd rather
 do it by hand instead of via `/setup`.
@@ -44,7 +55,10 @@ do it by hand instead of via `/setup`.
 - `agent-prompt.md` — the task the agent runs every day.
 - `notion-database-id.example.txt` — template; `/setup` turns this into
   your personal `notion-database-id.txt` (gitignored).
-- `run-agent.sh` — the script cron actually calls.
+- `run-agent.sh` — the script the scheduler actually calls. Self-gates on
+  `.last-run-at` (gitignored — local run state, not template content) so
+  it's safe to invoke frequently; only actually runs the agent if ≥20 hours
+  have passed since the last success.
 - `.claude/commands/setup.md` — the `/setup` command itself.
 
 ## 1. Create the Notion database
@@ -118,7 +132,7 @@ claude mcp add notion --env NOTION_TOKEN=ntn_your_token_here -- npx -y @notionhq
 ```
 
 Either way, run `/mcp` inside Claude Code once to confirm the `notion` server
-shows as connected before you rely on the cron job.
+shows as connected before you rely on the scheduled run.
 
 ## 3. Test it manually first
 From this directory:
@@ -130,85 +144,94 @@ time so you can approve each tool call and confirm it's searching sensibly
 and writing to the right database. Check the Notion table afterward. Once
 you're happy with the output, move to scheduling it.
 
-## 4. Schedule it with cron
-Edit your crontab:
-```bash
-crontab -e
-```
-This opens an editor (often vim) — type your line inside it, don't pass it
-as an argument to `crontab -e` on the command line. Add (adjust the path to
-wherever you cloned this repo):
-```
-0 8 * * * /Users/you/job-search-agent-open/run-agent.sh >> /Users/you/job-search-agent-open/logs/agent.log 2>&1
-```
-This runs every day at 8am, including weekends. Use `0 8 * * 1-5` instead
-for weekdays only.
+## 4. Schedule it with launchd (not cron)
 
-If you hit a "bad minute" or similar parse error, it's almost always a
-stray character from copy-pasting into the editor. The more reliable path:
-write the line to a plain text file with a real text editor, then run
-`crontab <path-to-file>` to install it directly, avoiding the interactive
-editor entirely.
+**Why launchd instead of cron:** a fixed-clock-time cron job needs the Mac
+to be fully awake at that exact minute, which turned out to be a deep
+rabbit hole — macOS's overnight "DarkWake" maintenance cycles don't count
+as awake (cron silently never fires), `pmset repeat wake` only reliably
+produces a real wake on AC power (not battery), and even with a real wake,
+a closed laptop lid without an external display drops straight back into
+"Clamshell Sleep" within seconds — nowhere near enough time for a multi-
+minute agent run. Three separate, genuinely obscure failure modes, all of
+which look identical from the outside: no log, no error, nothing.
 
-Create the log folder if it doesn't exist:
-```bash
-mkdir -p /Users/you/job-search-agent-open/logs
-```
+launchd sidesteps all three by not trying to force a wake at all. Instead,
+`/setup` installs a LaunchAgent that checks in periodically (every 30
+minutes) *while the machine is naturally awake* — at login, or whenever
+you're already using it — and only actually runs the agent if `run-agent.sh`'s
+own gate says ≥20 hours have passed since the last success. In practice
+this means: open your laptop once a day, and within 30 minutes of your
+first natural wake/login, it runs. Not at a fixed clock time, but reliably.
 
-## 4a. macOS: make sure the job can actually fire
-Two macOS-specific gotchas caused a scheduled run to silently do nothing —
-no log file, no new Notion entries, no error anywhere obvious. Both are
-worth ruling out before you trust the schedule:
+**`/setup` does this for you** (generates the plist with your actual paths,
+loads it, removes any old crontab entry). To do it by hand instead:
 
-**1. `run-agent.sh` must be executable.** Cloning or downloading a repo
-doesn't always preserve the execute bit. Check with:
-```bash
-ls -la run-agent.sh
-```
-You want to see `-rwxr-xr-x` (an `x` in there somewhere). If it's
-`-rw-r--r--` instead, fix it with:
-```bash
-chmod +x run-agent.sh
-```
-If this is missing, cron fails with "permission denied" — but since that
-error happens *before* the script's own log-redirect logic runs, you may
-not see it anywhere except by testing manually.
+1. Find your `claude` binary and make sure `run-agent.sh`'s `PATH` line
+   includes its directory:
+   ```bash
+   which claude
+   ```
+   A background process (launchd or cron) doesn't inherit your full
+   interactive-shell PATH, so if `claude` lives somewhere not already listed
+   in `run-agent.sh`'s `export PATH=...` line, add it — otherwise the
+   scheduled run fails with `claude: command not found` even though running
+   the script by hand works fine.
 
-**2. macOS won't run cron jobs while asleep — and "DarkWake" doesn't count.**
-Overnight, Macs cycle through brief low-power "DarkWake" states for
-background maintenance (Spotlight, Mail, iCloud sync) and go right back to
-sleep. Cron jobs do **not** run during DarkWake; they need a real, full
-wake. If your Mac is normally asleep at your scheduled time (lid closed,
-no reason to be awake), the job will never fire, and there will be zero
-trace of it anywhere.
+2. Create `~/Library/LaunchAgents/com.jobsearchagent.daily.plist` (adjust
+   the two path strings to wherever you cloned this repo):
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>com.jobsearchagent.daily</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/bin/bash</string>
+           <string>/Users/you/job-search-agent-open/run-agent.sh</string>
+       </array>
+       <key>RunAtLoad</key>
+       <true/>
+       <key>StartInterval</key>
+       <integer>1800</integer>
+       <key>StandardOutPath</key>
+       <string>/Users/you/job-search-agent-open/logs/launchd.log</string>
+       <key>StandardErrorPath</key>
+       <string>/Users/you/job-search-agent-open/logs/launchd.log</string>
+   </dict>
+   </plist>
+   ```
+   (`launchd.log` catches launchd-level startup failures only — the agent's
+   actual output always goes to `logs/agent.log` via the script's own
+   redirect, regardless of how it was invoked.)
 
-The fix is to schedule an actual wake a few minutes before your cron time:
-```bash
-sudo pmset repeat wake MTWRFSU 07:55:00
-```
-(Adjust the time to ~5 minutes before whatever you put in your crontab.
-`MTWRFSU` = every day; drop days you don't need, e.g. `MTWRF` for weekdays
-only — but match whatever schedule you used in cron.) This requires your
-Mac login password at the `sudo` prompt (no visible typing feedback — that's
-normal). Verify it took with:
-```bash
-pmset -g sched
-```
-You should see `repeating wake at 7:55AM every day` (or your chosen time).
+3. Load it:
+   ```bash
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jobsearchagent.daily.plist
+   ```
+   `RunAtLoad` means this triggers an immediate check — harmless, since
+   `run-agent.sh` will just skip if you tested manually within the last
+   20 hours.
 
-**How to tell which problem you have, if either:** run the script directly
-once, with the machine awake, using the exact same redirect cron would use:
+4. Verify:
+   ```bash
+   launchctl list com.jobsearchagent.daily
+   ```
+   Look for `"LastExitStatus" = 0`. If you see a nonzero value, check
+   `logs/launchd.log` and `logs/agent.log` for what happened.
+
+**If you already have a cron entry from an earlier setup**, remove it so
+both don't fire:
 ```bash
-./run-agent.sh >> logs/agent.log 2>&1
+crontab -l | grep -v run-agent.sh | crontab -
 ```
-If this fails immediately with "permission denied," it's #1. If it runs
-fine manually but the scheduled run never produces a log entry, it's #2 —
-check `pmset -g log | grep -E "Sleep|Wake"` around your scheduled time to
-confirm the machine was actually asleep.
 
 ## 5. A note on `--dangerously-skip-permissions`
-`run-agent.sh` uses this flag because cron has no human present to approve
-tool calls interactively. It's reasonable here because this is a single-
+`run-agent.sh` uses this flag because a scheduled, unattended run has no
+human present to approve tool calls interactively. It's reasonable here
+because this is a single-
 purpose project folder that only does web search + Notion writes — but the
 flag also disables Claude Code's confirmation prompts for file edits and bash
 commands generally. If you'd rather avoid it, pre-approve just the tools this

@@ -4,8 +4,12 @@
 profile.md
 notion-database-id.txt
 
-# Cron output
+# Run output and state
 logs/*.log
+.last-run-at
+
+# Generated LaunchAgent plist (paths are specific to your machine/username)
+com.jobsearchagent.daily.plist
 
 # OS cruft
 .DS_Store

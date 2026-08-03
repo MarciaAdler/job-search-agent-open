@@ -15,6 +15,17 @@ trim / add to the default company list"). Free-text background and
 experience don't fit multiple-choice — just ask directly and let them
 write paragraphs.
 
+## Step 0: Check the folder location (macOS only)
+If running on macOS, check whether the current directory is inside
+`~/Desktop`, `~/Documents`, or `~/Downloads`. If it is, warn the user
+clearly: macOS blocks background processes (the scheduled agent) from
+touching files in those folders unless Full Disk Access is explicitly
+granted via System Settings, which is fiddly and easy to get wrong. Ask if
+they want to move the whole folder now to somewhere else under their home
+directory (e.g. `~/job-search-agent-open`) before continuing — if so, move
+it and continue setup from the new location. If they decline, proceed but
+remind them again at Step 9 before setting up the scheduled run.
+
 ## Step 1: Check for existing personalization
 Check whether `./profile.md` already exists. If it does, tell the user and
 ask whether they want to (a) start over, (b) update specific sections, or
@@ -90,28 +101,46 @@ a starting point. Ask if they want to:
 ## Step 9: Wrap up
 Run `chmod +x run-agent.sh` yourself right now (safe, idempotent) — a repo
 clone/download doesn't always preserve the execute bit, and a
-non-executable `run-agent.sh` makes cron fail silently later with no log
-and no obvious error. Don't skip this even if it looks fine; just run it.
+non-executable `run-agent.sh` fails silently later with no log and no
+obvious error. Don't skip this even if it looks fine; just run it.
 
-Remind them to test manually before scheduling cron:
+Remind them to test manually first:
 ```
 claude -p "$(cat agent-prompt.md)"
 ```
 Run it interactively (without `--dangerously-skip-permissions`) the first
 time so they can approve tool calls and confirm it's searching sensibly.
-Point them at README.md §4 for the cron scheduling step once they're happy
-with a test run.
 
-If they mention they're on macOS (or you can tell from context/tooling),
-proactively flag README.md §4a: macOS won't run cron jobs while the machine
-is asleep, and its overnight "DarkWake" maintenance cycles don't count as
-awake for this purpose — a Mac that's normally asleep at the scheduled
-time will silently never run the job. Give them the fix directly rather
-than waiting for them to hit it:
-```
-sudo pmset repeat wake MTWRFSU 07:55:00
-```
-(adjust the time to ~5 minutes before whatever cron schedule they choose).
-This needs their own password at the `sudo` prompt, so tell them to run it
-themselves — you can't run `sudo` for them. Offer to verify afterward with
-`pmset -g sched` once they confirm they've run it.
+## Step 10: Set up the scheduled run (launchd, not cron)
+Once they're happy with a manual test, set up the LaunchAgent yourself
+rather than just pointing at docs — this is the part most likely to go
+wrong if left to manual copy-paste. See README.md §4 for the full
+rationale (short version: fixed-clock-time cron ran into three separate
+macOS sleep/wake failure modes that all look identical — no log, no error,
+nothing; launchd's periodic-check-while-naturally-awake model sidesteps
+all three).
+
+1. Run `which claude` and check its directory is included in
+   `run-agent.sh`'s `export PATH=...` line. If not, add it — a background
+   process doesn't inherit the user's full interactive-shell PATH, and a
+   missing entry here causes `claude: command not found` at schedule time
+   even though manual runs work fine.
+2. Write `~/Library/LaunchAgents/com.jobsearchagent.daily.plist` (and a
+   copy in the project folder for reference) using the exact absolute path
+   to this project's `run-agent.sh` and `logs/launchd.log`. Use the plist
+   template in README.md §4 as the structure — `Label`
+   `com.jobsearchagent.daily`, `RunAtLoad` true, `StartInterval` 1800.
+3. Validate it with `plutil -lint`, then load it:
+   ```
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jobsearchagent.daily.plist
+   ```
+4. Check if an old crontab entry exists from a previous setup attempt and
+   remove it so both schedulers don't fire:
+   ```
+   crontab -l | grep -v run-agent.sh | crontab -
+   ```
+5. Verify: `launchctl list com.jobsearchagent.daily` should show
+   `"LastExitStatus" = 0`. `RunAtLoad` means loading it triggers an
+   immediate check — this will just skip harmlessly if they tested manually
+   within the last 20 hours (check `logs/agent.log` for a "Skip" line to
+   confirm it ran cleanly rather than erroring).
