@@ -186,7 +186,7 @@ in the Notion database (NOTION_DATABASE_ID) with these properties:
 | URL              | URL        | direct link to the posting |
 | Salary           | Text       | as listed, e.g. "$180k–$210k"; else "Not listed" |
 | Location         | Text       | e.g. "Remote (US)" / "Hybrid – City" / "Onsite – City" |
-| Match Score      | Number     | 1–10 from step 5 |
+| Match score      | Number     | 1–10 from step 5 |
 | Gaps             | Text       | the 1–3 gap statements from step 6, semicolon-separated |
 | Date Added       | Date       | today's date |
 | Status           | Select     | "New" |

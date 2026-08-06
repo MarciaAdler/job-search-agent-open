@@ -71,10 +71,18 @@ Create a new database (as a full-page database, not inline) with these propertie
 | URL          | URL    |
 | Salary       | Text   |
 | Location     | Text   |
-| Match Score  | Number |
+| Match score  | Number |
 | Gaps         | Text   |
 | Date Added   | Date   |
 | Status       | Select (options: New, Reviewing, Applied, Rejected, Interviewing) |
+
+Property names are matched exactly, including case — Notion won't stop you
+from typing `Match Score` instead of `Match score`, but the agent will treat
+that as a schema mismatch at runtime (it'll still write to whatever property
+actually exists, but it'll flag the mismatch in every run's summary until
+someone fixes it). `/setup` checks this for you automatically once Notion is
+connected (§2); if you're setting this up by hand, compare your database's
+actual property names against this table before your first run.
 
 Copy the database ID into `notion-database-id.txt` (instructions are already
 in `notion-database-id.example.txt` — it's the 32-character string in the

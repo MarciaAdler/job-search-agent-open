@@ -77,7 +77,7 @@ with everything gathered above filled in. Keep the same section headers so
 Check whether `./notion-database-id.txt` already exists and has a real ID
 in it (not the placeholder). If not, walk the user through:
 1. Creating a Notion database with these properties: Job Title (title),
-   Company (text), URL (url), Salary (text), Location (text), Match Score
+   Company (text), URL (url), Salary (text), Location (text), Match score
    (number), Gaps (text), Date Added (date), Status (select: New,
    Reviewing, Applied, Rejected, Interviewing).
 2. Connecting Notion to Claude Code — either `claude mcp add --transport
@@ -86,6 +86,18 @@ in it (not the placeholder). If not, walk the user through:
 3. Running `/mcp` to confirm the `notion` server shows connected.
 4. Asking them to paste the database ID (the 32-character string in the
    database's URL), then writing it to `./notion-database-id.txt`.
+5. Once connected, fetch the actual database schema via the Notion MCP tools
+   and compare its property names against the table in `agent-prompt.md`
+   §7 (Job Title, Company, URL, Salary, Location, Match score, Gaps, Date
+   Added, Status). Notion doesn't enforce a naming convention, so it's easy
+   to end up with e.g. `Match Score` instead of `Match score` even when
+   following this guide exactly. Property names are matched literally at
+   runtime, so any mismatch here means every future run flags it in its
+   summary instead of just working. Don't ask the user to go rename
+   anything in Notion — their database is the source of truth. Instead,
+   edit `agent-prompt.md`'s schema table in this project's copy so it
+   matches their actual property names exactly, then confirm back to the
+   user what (if anything) you changed.
 
 ## Step 8: companies.json
 Tell the user `companies.json` ships with 20 startup companies (sourced
