@@ -1,5 +1,6 @@
 <img src="icon.png" width="50">
-## Job Search Agent (Open Template)
+
+# Job Search Agent (Open Template)
 
 An unattended, daily job-search agent that runs on [Claude Code](https://claude.com/claude-code)
 and logs matching postings to a Notion database — scored and filtered
