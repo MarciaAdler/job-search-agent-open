@@ -1,4 +1,4 @@
-<img src="icon.png">
+<img src="icon.png" width="50px">
 # Job Search Agent (Open Template)
 
 An unattended, daily job-search agent that runs on [Claude Code](https://claude.com/claude-code)
