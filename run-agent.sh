@@ -48,6 +48,25 @@ if [ ! -f profile.md ]; then
   exit 1
 fi
 
+# Skip if this looks like a DarkWake (a brief background maintenance wake —
+# no display, no user present) rather than a real wake. A DarkWake can last
+# well under a minute, nowhere near enough for a multi-minute agent run
+# before the system drops back to sleep and kills the connection mid-
+# request. (This happened in production: a launchd check-in landed inside
+# a ~2m45s DarkWake window, the run started, and claude -p got cut off with
+# "Connection closed mid-response" the moment sleep resumed.)
+# `UserIsActive` in `pmset -g assertions` reflects genuine HID (keyboard/
+# trackpad) activity — it's 0 during DarkWake and 1 during a real wake or
+# active login session. Treated as advisory, not a hard gate: if the field
+# is missing/unparseable for any reason, fall through and let the
+# caffeinate wrap below guard the run instead, rather than silently
+# stalling forever on a parsing issue.
+user_is_active="$(pmset -g assertions 2>/dev/null | awk '/^[[:space:]]*UserIsActive/{print $2; exit}')"
+if [ "$user_is_active" = "0" ]; then
+  echo "$(date '+%Y-%m-%d %H:%M:%S') Skip — system is in DarkWake (UserIsActive=0), not a real wake. Will retry next check-in."
+  exit 0
+fi
+
 TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 if [ "$have_prior_run" = true ]; then
   echo "=== Run started: $TIMESTAMP (${elapsed_hours}h since last run: $last_run_iso) ==="
@@ -60,7 +79,13 @@ fi
 # project directory you trust, since it also skips confirmation on file edits.
 # If you'd rather not use it, see the README for the allowlisted-tools
 # alternative in ~/.claude/settings.json.
-claude -p "$(cat agent-prompt.md)" --dangerously-skip-permissions
+#
+# caffeinate holds a no-idle-sleep assertion for the duration of this one
+# command, releasing it automatically when claude exits either way. This is
+# the second half of the DarkWake defense above: that check is only a
+# point-in-time read at the top of the script, so this covers the system
+# drifting back to sleep mid-run even if the check passed a moment earlier.
+caffeinate -i -s claude -p "$(cat agent-prompt.md)" --dangerously-skip-permissions
 
 # Only record success after claude -p exits 0 (set -e means a failure above
 # skips this line entirely, so a failed run gets retried next check rather

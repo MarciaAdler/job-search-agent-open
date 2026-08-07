@@ -166,11 +166,21 @@ which look identical from the outside: no log, no error, nothing.
 
 launchd sidesteps all three by not trying to force a wake at all. Instead,
 `/setup` installs a LaunchAgent that checks in periodically (every 30
-minutes) *while the machine is naturally awake* — at login, or whenever
-you're already using it — and only actually runs the agent if `run-agent.sh`'s
-own gate says ≥20 hours have passed since the last success. In practice
-this means: open your laptop once a day, and within 30 minutes of your
-first natural wake/login, it runs. Not at a fixed clock time, but reliably.
+minutes) and only actually runs the agent if `run-agent.sh`'s own gate says
+≥20 hours have passed since the last success. In practice this means: open
+your laptop once a day, and within 30 minutes of your first natural
+wake/login, it runs. Not at a fixed clock time, but reliably.
+
+**A fourth failure mode, found in production:** a launchd check-in can
+itself land inside a brief DarkWake — not just a real, user-present wake —
+and a DarkWake is often too short (well under a minute, sometimes just over
+one) for a multi-minute agent run to finish before the system drops back to
+sleep, severing the connection mid-request. `run-agent.sh` now guards
+against this two ways: before starting, it checks `UserIsActive` from
+`pmset -g assertions` (0 during DarkWake, 1 during a real wake) and skips
+the check-in if it reads 0; once it does start, the `claude -p` call is
+wrapped in `caffeinate -i -s` so the system can't drift back to idle sleep
+mid-run even if the check passed right at the DarkWake/real-wake boundary.
 
 **`/setup` does this for you** (generates the plist with your actual paths,
 loads it, removes any old crontab entry). To do it by hand instead:
