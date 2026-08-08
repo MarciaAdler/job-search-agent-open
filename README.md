@@ -167,10 +167,10 @@ minute agent run. Three separate, genuinely obscure failure modes, all of
 which look identical from the outside: no log, no error, nothing.
 
 launchd sidesteps all three by not trying to force a wake at all. Instead,
-`/setup` installs a LaunchAgent that checks in periodically (every 30
+`/setup` installs a LaunchAgent that checks in periodically (every 15
 minutes) and only actually runs the agent if `run-agent.sh`'s own gate says
 ≥20 hours have passed since the last success. In practice this means: open
-your laptop once a day, and within 30 minutes of your first natural
+your laptop once a day, and within 15 minutes of your first natural
 wake/login, it runs. Not at a fixed clock time, but reliably.
 
 **A fourth failure mode, found in production:** a launchd check-in can
@@ -183,6 +183,17 @@ against this two ways: before starting, it checks `UserIsActive` from
 the check-in if it reads 0; once it does start, the `claude -p` call is
 wrapped in `caffeinate -i -s` so the system can't drift back to idle sleep
 mid-run even if the check passed right at the DarkWake/real-wake boundary.
+
+**Expect a delay after waking, not an instant run.** Check-ins are
+periodic, not wake-triggered — opening your laptop doesn't run the agent
+immediately, it just means the *next* periodic check-in (up to 15 minutes
+away) will land while you're genuinely present instead of during a
+DarkWake. Occasionally that next check-in can still land a few seconds too
+early (right as the system is finishing waking up) and skip once before
+catching you on the one after, but in practice expect roughly 15 minutes,
+not instant. If you don't want to wait at all, just run it yourself:
+`./run-agent.sh` (respects the 20-hour gate) or
+`claude -p "$(cat agent-prompt.md)"` (ignores the gate, runs immediately).
 
 **`/setup` does this for you** (generates the plist with your actual paths,
 loads it, removes any old crontab entry). To do it by hand instead:
@@ -215,7 +226,7 @@ loads it, removes any old crontab entry). To do it by hand instead:
        <key>RunAtLoad</key>
        <true/>
        <key>StartInterval</key>
-       <integer>1800</integer>
+       <integer>900</integer>
        <key>StandardOutPath</key>
        <string>/Users/you/job-search-agent-open/logs/launchd.log</string>
        <key>StandardErrorPath</key>

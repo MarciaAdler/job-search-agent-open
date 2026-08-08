@@ -130,7 +130,17 @@ wrong if left to manual copy-paste. See README.md §4 for the full
 rationale (short version: fixed-clock-time cron ran into three separate
 macOS sleep/wake failure modes that all look identical — no log, no error,
 nothing; launchd's periodic-check-while-naturally-awake model sidesteps
-all three).
+all three, and `run-agent.sh` itself guards against a fourth — a check-in
+landing inside a too-short DarkWake — via a `UserIsActive` check plus a
+`caffeinate` wrap around the actual run).
+
+**Before loading the LaunchAgent, confirm the Step 9 manual test has fully
+finished** — check `logs/agent.log` for its `=== Run finished ===` line, not
+just that it started. `RunAtLoad` (below) fires an immediate check the
+moment the LaunchAgent loads, and if a manual run is still in flight at that
+exact moment, both can end up running concurrently and racing on the same
+Notion writes. If unsure, just wait a minute and check the log before
+proceeding.
 
 1. Run `which claude` and check its directory is included in
    `run-agent.sh`'s `export PATH=...` line. If not, add it — a background
@@ -141,7 +151,11 @@ all three).
    copy in the project folder for reference) using the exact absolute path
    to this project's `run-agent.sh` and `logs/launchd.log`. Use the plist
    template in README.md §4 as the structure — `Label`
-   `com.jobsearchagent.daily`, `RunAtLoad` true, `StartInterval` 1800.
+   `com.jobsearchagent.daily`, `RunAtLoad` true, `StartInterval` 900 (15
+   minutes — see README.md §4 for why not longer: a 30-minute interval means
+   up to a 30-minute wait after opening the laptop before the first
+   check-in, which is a worse experience than it needs to be for something
+   meant to just quietly run once a day).
 3. Validate it with `plutil -lint`, then load it:
    ```
    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jobsearchagent.daily.plist
@@ -156,3 +170,8 @@ all three).
    immediate check — this will just skip harmlessly if they tested manually
    within the last 20 hours (check `logs/agent.log` for a "Skip" line to
    confirm it ran cleanly rather than erroring).
+6. Tell the user plainly: after this, opening the laptop doesn't run the
+   agent instantly — expect roughly 15 minutes before the next check-in
+   lands during a real wake and runs it (see README.md §4). If they want a
+   run right now instead of waiting, they can always run `./run-agent.sh` or
+   `claude -p "$(cat agent-prompt.md)"` directly.
