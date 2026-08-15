@@ -195,6 +195,14 @@ If a property name in your actual database differs from this table, match by
 best judgment and note the mismatch in your end-of-run summary so the human
 can fix the schema.
 
+If a write using the plain property name fails validation, retry once using
+a `userDefined:<Property Name>` key instead (e.g. `userDefined:URL`) before
+treating it as a genuine mismatch — some Notion MCP server versions expose
+custom properties this way, particularly when the property's name collides
+with a Notion property-type keyword (e.g. a property literally named "URL").
+Note whichever key format actually worked in your end-of-run summary rather
+than rediscovering it by trial and error next run.
+
 ## 8. End-of-run summary
 Print a short plain-text summary (this is what ends up in the log):
 - How long it had been since the last run (from step 0), so it's clear what
