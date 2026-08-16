@@ -110,6 +110,17 @@ a starting point. Ask if they want to:
   §1a for the exact method. Never guess a token without verifying it.)
 - Remove any that don't fit their target role/industry
 
+## Step 8a: (Optional) speedrun-talent MCP server
+Ask if they're targeting startup roles and want to also pull from the a16z
+speedrun talent network's jobs board (see README.md §1b and
+`agent-prompt.md` §3d). This is optional — if they don't want it or don't
+have it connected, skip and move on; the agent runs fine without it. If
+they do want it, point them at README.md §1b to connect the MCP server,
+then confirm with `/mcp` that it's showing as connected before continuing.
+Mention explicitly that two of its tools (`express_interest`,
+`join_network`) register real interest on their behalf and the agent never
+calls them unattended — it only flags candidates in its summary.
+
 ## Step 9: Wrap up
 Run `chmod +x run-agent.sh` yourself right now (safe, idempotent) — a repo
 clone/download doesn't always preserve the execute bit, and a

@@ -134,6 +134,41 @@ startup you recognize), name it in the end-of-run summary as a suggested
 addition. Do not edit `companies.json` yourself — the candidate maintains
 that file directly and will add confirmed ATS/token entries themselves.
 
+### 3d. Query the speedrun-talent network (optional supplementary source)
+If the `speedrun-talent` MCP tools (`mcp__speedrun-talent__*`) aren't
+connected for this installation, skip this step entirely — it's an optional
+a16z-portfolio jobs source, not every clone of this template will have it
+configured (see README.md for how to connect it). If it is connected, use
+it as a third sourcing pass alongside 3a/3b:
+
+- Call `search_jobs` with filters derived from profile.md: map the Target
+  Role job family to the closest `fn` value (`engineering`, `research`,
+  `product`, `design`, `sales`, `marketing`, `operations`, `other`) — if
+  none fit well, omit `fn` and rely on the `q` free-text query plus the hard
+  filters in step 4 instead. Set a seniority filter matching profile.md's
+  floor, and a location filter from profile.md's Location section — check
+  the live `facets` in the response for actual valid values, since the
+  vocabulary can shift. Leave `scope` unset (default portfolio-wide) unless
+  profile.md says otherwise. Paginate through all result pages (50/page).
+- For each result, call `get_job` for the full description, posted pay
+  band, and canonical URL — same rule as 3b: a search result alone is too
+  thin to score accurately.
+- Fold matching postings into the same dedupe (step 2), hard-filter
+  (step 4), scoring (step 5), gap-identification (step 6), and Notion-write
+  (step 7) pipeline as any other source — no separate handling needed.
+- `get_company`, `list_collections`, `get_collection`, `list_companies`, and
+  `get_hiring_stats` are optional aids (company context for gap statements,
+  or discovery if `search_jobs` under-returns) — not required every run.
+
+**Never call `express_interest` or `join_network`.** Both are explicitly
+consent-gated in their own tool descriptions ("never call without the
+candidate's explicit go-ahead"), and this run has no live human to consent
+in the moment. Instead, treat them exactly like the companies.json
+suggestion in 3c: name any speedrun-sourced postings you logged this run as
+candidates for expressing interest in the end-of-run summary, and leave the
+actual `express_interest`/`join_network` call for the candidate to trigger
+themselves in a follow-up interactive session.
+
 ## 4. Hard filters (apply before scoring — reject if any fail)
 - Role title/scope matches one of the target roles in profile.md's Target
   Role section, or is clearly equivalent scope. Use the same judgment
@@ -211,6 +246,9 @@ Print a short plain-text summary (this is what ends up in the log):
 - The 3 highest-scoring new postings, one line each: score, title, company
 - Any schema mismatches, broken companies.json entries, or tool errors encountered
 - Any suggested new companies from step 3c
+- If speedrun-talent was connected (3d): any postings logged from it,
+  flagged as candidates for expressing interest — the candidate decides
+  whether to trigger that manually
 
 Do not ask the human any questions — this run is unattended. If something
 blocks you entirely (e.g., Notion auth failure, missing/empty profile.md),

@@ -120,6 +120,26 @@ endpoint) — those companies just aren't candidates for this file. The
 agent's supplementary `site:` searches (agent-prompt.md §3b) still cover
 some of that ground, just with the staleness caveats noted there.
 
+## 1b. (Optional) Connect the speedrun-talent MCP server
+If you're targeting startup roles, the agent can also pull from the
+a16z speedrun talent network's jobs board (speedrun portfolio + wider a16z
+portfolio) as a third source, alongside `companies.json` and the
+supplementary web search — see `agent-prompt.md` §3d. This is entirely
+optional; skip this section and the agent just runs its two default
+sources.
+
+Connect it the same way as the Notion server:
+```bash
+claude mcp add --transport http speedrun-talent https://mcp.speedrun-talent-network.com/mcp
+```
+Then run `/mcp` inside Claude Code once to confirm it shows as connected.
+
+Two of its tools, `express_interest` and `join_network`, register real
+interest with a company or the talent network on your behalf — the agent
+never calls these unattended. It only logs matching postings to Notion and
+flags them in its end-of-run summary as candidates for you to act on
+yourself, the same way it suggests new `companies.json` entries.
+
 ## 2. Connect Notion to Claude Code
 Two options — pick one:
 
