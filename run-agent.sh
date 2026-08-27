@@ -61,7 +61,14 @@ fi
 # is missing/unparseable for any reason, fall through and let the
 # caffeinate wrap below guard the run instead, rather than silently
 # stalling forever on a parsing issue.
-user_is_active="$(pmset -g assertions 2>/dev/null | awk '/^[[:space:]]*UserIsActive/{print $2; exit}')"
+# Captured into a variable rather than piped straight into awk: with
+# `pipefail` set, awk's early `exit` (it matches near the top of pmset's
+# output, which can run much longer) can close the pipe before pmset
+# finishes writing, so pmset gets SIGPIPE and the whole script dies via
+# `set -e` before logging anything — happened in production, silently
+# stopping check-ins for hours until diagnosed.
+pmset_assertions="$(pmset -g assertions 2>/dev/null)"
+user_is_active="$(awk '/^[[:space:]]*UserIsActive/{print $2; exit}' <<< "$pmset_assertions")"
 if [ "$user_is_active" = "0" ]; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') Skip — system is in DarkWake (UserIsActive=0), not a real wake. Will retry next check-in."
   exit 0
