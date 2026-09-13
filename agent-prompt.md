@@ -184,19 +184,59 @@ themselves in a follow-up interactive session.
 - Not already in the dedupe set from step 2.
 
 ## 5. Score each surviving posting (1–10 match score)
+
+### 5a. First, extract and weight the JD's actual requirements
+Before scoring, find the posting's requirements/qualifications section
+(labels vary: "Requirements," "Qualifications," "Minimum Qualifications,"
+"You have," "What you'll bring," etc.) and read it as an ordered list,
+preserving the order it's written in. Treat separately-labeled sections
+like "Nice to have," "Preferred," or "Bonus points" as soft signals only —
+never weight those like hard requirements, no matter how specific they read.
+
+For each hard requirement, check it against profile.md's Core Experience,
+Tools & Competencies, and Known Gaps sections:
+- **Resolve "or" / alternative-path requirements fully before flagging a
+  gap.** If a requirement reads as "X or Y" (e.g. "3+ years in fintech or
+  healthcare compliance," "CS degree or equivalent bootcamp + portfolio"),
+  check every branch against the candidate's background. Only count it as a
+  gap if the candidate's background satisfies *none* of the branches.
+- **Weight remaining unmet hard requirements by their position in the
+  list.** The first ~3 requirements listed are usually what an employer
+  would actually screen out on — treat a miss on any of these as a **core
+  gap**. Requirements further down the list matter less individually —
+  treat a miss on these as a **secondary gap**, same as the existing
+  rubric's "real gap" language.
+- This applies with extra force to postings with formal, explicit minimum
+  qualifications — government/civil-service roles, licensure requirements,
+  "degree + N years" bars stated as mandatory. These are usually listed
+  first, and a clear miss is genuinely disqualifying, not coachable, even
+  if the rest of the JD reads like a strong fit.
+
+### 5b. Apply the rubric, respecting core-gap weighting
 Score against the candidate's actual experience in profile.md, not against
-generic criteria for the role family. Use this rubric:
+generic criteria for the role family. Use this rubric — but a core gap
+(per 5a) caps the score regardless of how strong the rest of the match
+looks:
 - **9–10 — Excellent match:** meets all core requirements, right seniority
   and scope, strong domain/tooling overlap, no disqualifying gaps
-- **7–8 — Strong match:** meets most requirements; only minor, coachable gaps
-- **5–6 — Moderate match:** meets baseline bar but has one or two real gaps
-  (e.g., wants some depth the candidate lacks)
-- **3–4 — Weak match:** meets the title/location filter but has a major gap
-  (e.g., requires people management the candidate doesn't want, requires
-  scale/domain experience clearly outside the candidate's background)
-- **1–2 — Poor match:** technically passed the hard filters but is a bad fit
-  on reflection (e.g., requires deep expertise in an area profile.md
-  explicitly flags as a gap)
+- **7–8 — Strong match:** meets most requirements; only minor, coachable
+  gaps (never any unmet core gap)
+- **5–6 — Moderate match:** meets baseline bar but has one or two real
+  secondary gaps (e.g., wants some depth the candidate lacks) — never
+  applies if a core gap exists
+- **3–4 — Weak match:** either a major secondary gap (e.g., requires people
+  management the candidate doesn't want, requires scale/domain experience
+  clearly outside the candidate's background), or exactly one core gap
+  that's borderline/partial rather than a flat miss
+- **1–2 — Poor match:** one or more clear core-gap misses — the candidate
+  doesn't meet a top-listed hard requirement at all (e.g., minimum
+  qualifications the candidate's background doesn't satisfy via any path,
+  or deep expertise in an area profile.md explicitly flags as a gap)
+
+A posting with a hard, unambiguous miss on one of the first ~3 listed
+requirements should generally score 3 or below, even if it also has strong
+overlap elsewhere — don't let good secondary-requirement fit pull the score
+back up into "moderate" or "strong" territory.
 
 Skip (do not log) anything scoring below MIN_MATCH_SCORE_TO_LOG from
 profile.md.
@@ -207,7 +247,17 @@ concrete things in the JD that could hurt candidacy, not vague hedging.
 Good: "Requires 3+ years in fintech compliance — no direct experience."
 Bad: "May not be a perfect fit."
 Explicitly check the posting against the "Known Gaps / Watch-outs" list in
-profile.md and call those out by name when relevant.
+profile.md and call those out by name when relevant. Note which listed
+gaps are core (top-~3 requirement) vs. secondary, per step 5a, so the
+Notion entry reflects why the score landed where it did.
+
+If step 5a resolved an "or" requirement in the candidate's favor (they meet
+one branch but not the other), don't just drop it — add a short clarifying
+note alongside the real gaps so the reasoning is visible, not silent. Format:
+"Requires X or Y — candidate meets Y" (state which branch they meet). This
+is not a gap and shouldn't read like one; it's there so a human reviewing
+the entry later can audit why something that looks like a miss wasn't
+counted against the score.
 
 ## 7. Write to Notion
 For each qualifying, non-duplicate posting (cap at MAX_NEW_JOBS_PER_RUN total
