@@ -92,11 +92,46 @@ fi
 # the second half of the DarkWake defense above: that check is only a
 # point-in-time read at the top of the script, so this covers the system
 # drifting back to sleep mid-run even if the check passed a moment earlier.
-caffeinate -i -s claude -p "$(cat agent-prompt.md)" --dangerously-skip-permissions
+#
+# set -e is suspended for just this call so a failure doesn't exit the
+# script before we've had a chance to inspect it: an expired Claude Code
+# login session (a keychain credential shared with interactive `claude`
+# sessions; this script can't complete the browser-based re-auth itself)
+# has happened in production and previously failed silently on every
+# 15-minute check-in for up to ~2 days before being noticed. Distinguishing
+# it lets us surface it loudly instead.
+AUTH_FAILURE_SENTINEL=".auth-failure-notified-at"
+set +e
+claude_output="$(caffeinate -i -s claude -p "$(cat agent-prompt.md)" --dangerously-skip-permissions 2>&1)"
+claude_exit=$?
+set -e
+echo "$claude_output"
 
-# Only record success after claude -p exits 0 (set -e means a failure above
-# skips this line entirely, so a failed run gets retried next check rather
-# than being treated as done).
+if [ "$claude_exit" -ne 0 ]; then
+  if grep -qi "OAuth session expired\|Failed to authenticate" <<< "$claude_output"; then
+    echo "=== AUTH FAILURE: run did not complete — the Claude Code login session expired. Run '/login' in an interactive Claude Code session to fix; this script cannot do it unattended. ==="
+    # Re-notify at most once every 4 hours so a persistent failure doesn't
+    # spam a notification on every check-in until a human runs /login.
+    last_notified_iso=""
+    [ -f "$AUTH_FAILURE_SENTINEL" ] && last_notified_iso="$(cat "$AUTH_FAILURE_SENTINEL")"
+    last_notified_epoch="$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$last_notified_iso" +%s 2>/dev/null || echo "")"
+    hours_since_notify=999999
+    [ -n "$last_notified_epoch" ] && hours_since_notify=$(( (now_epoch - last_notified_epoch) / 3600 ))
+    if [ "$hours_since_notify" -ge 4 ]; then
+      osascript -e 'display notification "Run /login in Claude Code to fix — the job search agent has been unable to run." with title "Job Search Agent: login expired"' 2>/dev/null || true
+      date -u +"%Y-%m-%dT%H:%M:%SZ" > "$AUTH_FAILURE_SENTINEL"
+    fi
+  else
+    echo "=== Run failed (non-auth error — see output above) ==="
+  fi
+  exit 1
+fi
+
+# Clear any pending auth-failure sentinel now that a run has actually
+# succeeded, so a future failure notifies fresh instead of staying silent.
+rm -f "$AUTH_FAILURE_SENTINEL"
+
+# Only record success after claude -p exits 0.
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$LAST_RUN_FILE"
 
 echo "=== Run finished: $(date '+%Y-%m-%d %H:%M:%S') ==="

@@ -7,6 +7,7 @@ notion-database-id.txt
 # Run output and state
 logs/*.log
 .last-run-at
+.auth-failure-notified-at
 
 # Generated LaunchAgent plist (paths are specific to your machine/username)
 com.jobsearchagent.daily.plist
